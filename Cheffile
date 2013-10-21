@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+#^syntax detection
+
+site 'http://community.opscode.com/api/v1'
+
+cookbook 'haproxy'
+
+# Setting up the service.
+cookbook 'forever-service',
+  :git => 'https://github.com/exratione/forever-service',
+  :ref => 'v0.0.2'
+
+# The main setup cookbook.
+cookbook 'angularjs-websocket-transport',
+  :path => 'custom-cookbooks/angularjs-websocket-transport'

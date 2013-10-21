@@ -1,0 +1,15 @@
+# Vagrant
+.vagrant
+
+# Chef
+cookbooks
+tmp
+
+# IDEs
+.settings
+.project
+*sublime-*
+
+# Node.js
+node_modules
+npm-*
