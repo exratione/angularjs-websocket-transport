@@ -71,7 +71,7 @@ default_attributes(
           'stats hide-version',
           'stats realm Haproxy\ Statistics',
           'stats uri /',
-          # Obviously better authentication needed for a non-example system.
+          # Better authentication needed for a non-example system.
           'stats auth admin:password'
         ]
       }
@@ -107,7 +107,7 @@ default_attributes(
     'pid-file-path' => '/var/run/angular-websocket-transport.pid',
     'service-type' => 'upstart',
     'start-script' => '/vagrant/src/server/expressApp.js',
-    'user' => 'node',
+    'user' => 'vagrant',
     'forever' => {
       'min-uptime' => 5000,
       'spin-sleep-time' => 2000

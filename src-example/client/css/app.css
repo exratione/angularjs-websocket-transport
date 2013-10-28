@@ -1,0 +1,26 @@
+.wrapper {
+  padding: 10px;
+}
+table {
+  border-left: 1px solid #ccc;
+  border-top: 1px solid #ccc;
+  padding: 10px;
+}
+td, th {
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+  padding: 10px;
+}
+th {
+  font-weight: bold;
+}
+.number {
+  width: 100px;
+}
+.elapsed, .status {
+  width: 250px;
+}
+.no-results {
+  text-align: center;
+}

@@ -1,5 +1,5 @@
 name 'example-server'
-description 'An example server to demonstrate the AngularJS Websocket Transport service.'
+description 'An example server to demonstrate the AngularJS WebSocket Transport service.'
 
 run_list [
   'recipe[nodejs]',

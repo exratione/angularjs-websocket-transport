@@ -42,8 +42,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     chef.environments_path = "./environments"
     # The environment provides all the necessary attributes.
     chef.environment = "local-vagrant"
-    # Includes all of the other necessary recipies as dependencies, and
-    # coordinates the necessary configuration of MySQL, Apache, etc.
+    # Includes all of the other necessary recipies as dependencies.
     chef.add_role("example-server")
   end
 

@@ -1,0 +1,36 @@
+<div class="wrapper">
+  <button data-ng-click="httpParallel()">HTTP Parallel</button>
+  <button data-ng-click="httpSeries()">HTTP Series</button>
+  <button data-ng-click="httpOverWebSocketParallel()">Socket Parallel</button>
+  <button data-ng-click="httpOverWebSocketSeries()">Socket Series</button>
+</div>
+
+<div class="wrapper">
+  Requests:
+  <select
+    data-ng-model="count"
+    data-ng-options="value for value in countOptions"
+  ></select>
+</div>
+
+<div class="wrapper" data-ng-show="time.ended">
+  <span>Time to complete test: {{time.elapsed}}
+</div>
+
+<table>
+  <tr>
+    <th class="number">#</th>
+    <th class="status">Status</th>
+    <th class="elapsed">Elapsed</th>
+  </tr>
+  <tr data-ng-hide="results.length">
+    <td class="no-results" colspan="3">
+      No test results.
+    </td>
+  </tr>
+  <tr data-ng-repeat="result in results">
+    <td>{{result.index}}</td>
+    <td>{{resultStatus($index)}}</td>
+    <td>{{result.elapsed}}</td>
+  </tr>
+</table>
