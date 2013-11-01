@@ -8,7 +8,7 @@ cookbook 'haproxy'
 # Setting up the service.
 cookbook 'forever-service',
   :git => 'https://github.com/exratione/forever-service',
-  :ref => 'v0.0.2'
+  :ref => 'v0.0.3'
 
 # The main setup cookbook.
 cookbook 'angularjs-websocket-transport',

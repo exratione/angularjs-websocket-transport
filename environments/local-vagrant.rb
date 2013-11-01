@@ -106,7 +106,8 @@ default_attributes(
     'node-path' => '/usr/local/lib/node_modules',
     'pid-file-path' => '/var/run/angular-websocket-transport.pid',
     'service-type' => 'upstart',
-    'start-script' => '/vagrant/src/server/expressApp.js',
+    'start-script' => '/vagrant/src-example/server/expressApp.js',
+    'start-service' => true,
     'user' => 'vagrant',
     'forever' => {
       'min-uptime' => 5000,

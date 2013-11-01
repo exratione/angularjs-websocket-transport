@@ -35,7 +35,7 @@ var app = express();
 // Add middleware to serve httpOverWebSocket.js in a path we'll be assigning
 // to express.static().
 app.use(function (request, response, next) {
-  if(req.url === '/js/httpOverWebSocket.js') {
+  if(request.url === '/js/httpOverWebSocket.js') {
     response.sendfile(path.join(__dirname, '../../src/httpOverWebSocket.js'));
   } else {
     next();
