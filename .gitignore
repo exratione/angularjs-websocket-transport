@@ -15,3 +15,4 @@ node_modules
 npm-*
 
 # Don't commit the Primus generated Javascript.
+src-example/client/js/lib/primus.js

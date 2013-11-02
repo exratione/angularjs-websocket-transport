@@ -13,8 +13,10 @@ SITE
       yum (>= 0.0.0)
     yum (2.4.0)
 
-PATH
-  remote: ../forever-service
+GIT
+  remote: https://github.com/exratione/forever-service
+  ref: v0.0.3
+  sha: 0c6cade1368420be910b278b60d9af991a10d2c3
   specs:
     forever-service (0.0.3)
       nodejs (>= 0.0.0)
