@@ -17,7 +17,7 @@
   ---------------------------------------------------------------------------*/
 
   // Create the example application AngularJS module.
-  var comparison = angular.module('comparison', []);
+  var comparison = angular.module('comparison', ['ngRoute']);
 
   // Use the config function to set up routes, or route singular in this case.
   comparison.config(['$routeProvider', function ($routeProvider) {
@@ -37,7 +37,7 @@
 
   comparison.provider('httpOverWebSocket', httpOverWebSocketProvider);
   comparison.config(['httpOverWebSocketProvider', function (httpOverWebSocketProvider) {
-    httpOverWebSocketProvider.config({
+    httpOverWebSocketProvider.configure({
       // Don't exclude any URLs.
       exclude: [],
       // Include the fake REST calls only, since that's the only thing the

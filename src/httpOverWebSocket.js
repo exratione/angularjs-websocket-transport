@@ -8,13 +8,33 @@
  * service with communication over WebSockets.
  *
  * myModule.provider('httpOverWebSocket', httpOverWebSocketProvider);
- * myModule.config('httpOverWebSocketProvider', {
- *
- * });
+ * myModule.config(['httpOverWebSocketProvider', function (httpOverWebSocketProvider) {
+ *  httpOverWebSocketProvider.configure({
+ *    // Don't exclude any URLs.
+ *    exclude: [],
+ *    // Include the fake REST calls only, since that's the only thing the
+ *    // server is set up to handle.
+ *    include: [/^\/restOverWebSocket/],
+ *    primus: {
+ *      // Request timeout in milliseconds. Not the same as the various timeouts
+ *      // associated with Primus: this is how long to wait for a response to a
+ *      // specific request before rejecting the associated promise.
+ *      timeout: 10000,
+ *      // Delay in milliseconds between timeout checks.
+ *      timeoutCheckInterval: 100,
+ *      // Already connected primus instance.
+ *      instance: new Primus('/', {
+ *        // Default options.
+ *      })
+ *    }
+ *  });
+ *}]);
  *
  * Then include the service 'httpOverWebSocket' in place of $http. e.g.:
  *
- * function myService($http);
+ * function myService($http) {
+ *   // ...
+ * };
  * myModule.service('myService', [
  *  'httpOverWebSocket',
  *  myService
@@ -87,15 +107,14 @@ var httpOverWebSocketProvider;
   Transport.prototype.send = function (requestConfig) {
     var id = this.generateUuid();
     this.requests[id] = {
-      promise: this.$q.defer(),
+      deferred: this.$q.defer(),
       config: requestConfig,
     };
     if (this.config.timeout) {
       this.requests[id].timeoutAfter = Date.now() + this.config.timeout;
     }
-
     this.transmit(id, requestConfig);
-    return this.requests[id].promise;
+    return this.requests[id].deferred.promise;
   };
 
   /**
@@ -164,14 +183,14 @@ var httpOverWebSocketProvider;
   /**
    * Run through pending RPCs and terminate those that have timed out.
    */
-  p.runTimeoutCheck = function () {
+  Transport.prototype.runTimeoutCheck = function () {
     var now = Date.now();
     for (var prop in this.requests) {
       if (this.requests[prop].timeoutAfter && this.requests[prop].timeoutAfter < now) {
-        var promise = this.requests[prop].promise;
+        var deferred = this.requests[prop].deferred;
         var requestConfig = this.requests[prop].config;
         delete this.requests[prop];
-        promise.reject(this.createHttpTimeoutResponse('Timed out.', requestConfig));
+        deferred.reject(this.createHttpTimeoutResponse('Timed out.', requestConfig));
       }
     }
   };
@@ -189,12 +208,14 @@ var httpOverWebSocketProvider;
    * @param {object} $q
    */
   function PrimusTransport (config, $q, $rootScope, $interval) {
-    this.super_.apply(this, arguments);
+    PrimusTransport.super_.apply(this, arguments);
+    var self = this;
+
     // Either store or create the primus connection.
-    if (config.instance) {
-      this.primus = config.instance;
+    if (this.config.instance) {
+      this.primus = this.config.instance;
     } else {
-      this.primus = primus(config.url, config.options);
+      this.primus = primus(this.config.url, this.config.options);
     }
 
     // Set up to receive messages. These must come back with a matching _id
@@ -208,20 +229,19 @@ var httpOverWebSocketProvider;
         return;
       }
 
-      if (!this.requests[data._id]) {
+      if (!self.requests[data._id]) {
         // Throw and let Angular handle the error.
         throw new Error('httpOverWebSocket: response came back with ID ' + data._id + ' but no matching request found.');
       }
 
-      var promise = this.requests[data._id].promise;
-      var requestConfig = this.requests[data._id].config;
+      var deferred = self.requests[data._id].deferred;
+      var requestConfig = self.requests[data._id].config;
+      delete self.requests[data._id];
       delete data._id;
-      delete this.requests[data._id];
 
       // Send back something that looks like a $http 200 response.
-      var self = this;
       $rootScope.$apply(function () {
-        self.promises[data._id].resolve(self.createHttpSuccessResponse(data, requestConfig));
+        deferred.resolve(self.createHttpSuccessResponse(data, requestConfig));
       });
     });
   }
@@ -247,7 +267,7 @@ var httpOverWebSocketProvider;
    */
   httpOverWebSocketProvider = function httpOverWebSocketProvider() {
 
-    this.config = {
+    var config = {
       // Are we excluding any URLs, and passing them through to plain $http?
       exclude: [],
       // Which URLs are we including?
@@ -272,11 +292,11 @@ var httpOverWebSocketProvider;
     /**
      * Set the configuration for httpOverWebSocket service instances.
      *
-     * @param {object} config
+     * @param {object} configuration
      */
-    this.configure = function (config) {
-      for (var prop in config || {}) {
-        this.config[prop] = config.prop;
+    this.configure = function (providedConfig) {
+      for (var prop in providedConfig || {}) {
+        config[prop] = providedConfig[prop];
       }
     };
 
@@ -300,14 +320,14 @@ var httpOverWebSocketProvider;
       var httpOverWebSocket = function httpOverWebSocket (requestConfig) {
         // Route via $http if the URL doesn't match or is excluded.
         var index;
-        for (index = 0; index < exclude.length; index++) {
-          if (requestConfig.match(exclude[index])) {
+        for (index = 0; index < config.exclude.length; index++) {
+          if (requestConfig.url.match(config.exclude[index])) {
             return $http(requestConfig);
           }
         }
         // Route via httpOverWebSocket if there is an included match.
-        for (index = 0; index < include.length; index++) {
-          if (requestConfig.match(include[index])) {
+        for (index = 0; index < config.include.length; index++) {
+          if (requestConfig.url.match(config.include[index])) {
 
 
             // TODO: deal with requestConfig.cache in the right way.
@@ -315,30 +335,34 @@ var httpOverWebSocketProvider;
 
 
 
-            return this.transport.send(requestConfig);
+            return httpOverWebSocket.transport.send(requestConfig);
           }
         }
 
-        // Doesn't match anything? Then off to plain $http.
+        // Doesn't match anything? Then off to plain $http we go.
         return $http(requestConfig);
       };
 
+      /**
+       * Helper function. Pass a request into the main httpOverWebSocket
+       * function.
+       */
       function adjunct (method, url, requestConfig, data) {
         requestConfig = requestConfig || {};
-        requestConfig.method = method.toUpperCase();
+        requestConfig.method = method;
         requestConfig.url = url;
         requestConfig.data = data;
         return httpOverWebSocket(requestConfig);
       }
 
       httpOverWebSocket.delete = function (url, requestConfig) {
-        return ajunct('delete', url, requestConfig);
+        return ajunct('DELETE', url, requestConfig);
       };
       httpOverWebSocket.get = function (url, requestConfig) {
-        return ajunct('get', url, requestConfig);
+        return ajunct('GET', url, requestConfig);
       };
       httpOverWebSocket.head = function (url, requestConfig) {
-        return ajunct('head', url, requestConfig);
+        return ajunct('HEAD', url, requestConfig);
       };
 
       // TODO: httpOverWebSocket.jsonp() what extras?
@@ -348,10 +372,10 @@ var httpOverWebSocketProvider;
 
 
       httpOverWebSocket.post = function (url, data, requestConfig) {
-        return ajunct('post', requestConfig, data);
+        return ajunct('POST', requestConfig, data);
       };
       httpOverWebSocket.put = function (url, data, requestConfig) {
-        return ajunct('put', url, requestConfig, data);
+        return ajunct('PUT', url, requestConfig, data);
       };
 
       /* ---------------------------------------------------------------------
@@ -361,7 +385,7 @@ var httpOverWebSocketProvider;
       // Only Primus as a transport option for now, since that is an abstraction
       // layer for all the other options we might have included here, such as
       // Engine.IO, Socket.IO, etc.
-      httpOverWebSocket.transport = new PrimusTransport(this.config.primus, $q, $rootScope, $interval);
+      httpOverWebSocket.transport = new PrimusTransport(config.primus, $q, $rootScope, $interval);
 
       return httpOverWebSocket;
     }];
