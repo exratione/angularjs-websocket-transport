@@ -13,3 +13,5 @@ tmp
 # Node.js
 node_modules
 npm-*
+
+# Don't commit the Primus generated Javascript.
