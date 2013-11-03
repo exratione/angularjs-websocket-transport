@@ -21,7 +21,7 @@ Functionality shared between HTTP/S and WebSocket transports.
 function getResponseData(callback) {
   setTimeout(function () {
     var response = {};
-    response[Math.random()] = Math.random();
+    response['alpha-' + Math.random()] = Math.random();
     callback(response);
   }, 50);
 }
@@ -32,8 +32,8 @@ Set up Express
 
 var app = express();
 
-// Add middleware to serve httpOverWebSocket.js in a path we'll be assigning
-// to express.static().
+// Add middleware to serve httpOverWebSocket.js. This is in a path we'll be
+// assigning to express.static(), so this needs to be processed first.
 app.use(function (request, response, next) {
   if(request.path === '/js/httpOverWebSocket.js') {
     response.sendfile(path.join(__dirname, '../../src/httpOverWebSocket.js'));
@@ -52,7 +52,7 @@ app.all('/rest', function (request, response, next) {
   });
 });
 
-// Up check.
+// An up check to keep proxies happy.
 app.all('/up', function (request, response, next) {
   response.json({ up: true });
 });
@@ -78,7 +78,8 @@ var primus = new Primus(server, {
 // But this is good enough for this example use.
 primus.save(path.join(__dirname, '../client/js/lib/primus.js'));
 
-// Set up a listener.
+// Set up a listener. This is missing the error checks and other epicycles that
+// non-example code would have.
 primus.on('connection', function (spark) {
   // Set up the fake response to data requests.
   spark.on('data', function (data) {
@@ -90,8 +91,10 @@ primus.on('connection', function (spark) {
 
     // Generate a fake delayed response and throw it back down the wire.
     getResponseData(function (responseData) {
-      // Flag the data to match it up to the request.
+      // Flag the data to match it up to the request and add a status.
       responseData._id = data._id;
+      responseData._status = 200;
+      // Then send it down the wire.
       spark.write(responseData);
     });
   });

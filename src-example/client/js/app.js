@@ -36,27 +36,36 @@
   ---------------------------------------------------------------------------*/
 
   comparison.provider('httpOverWebSocket', httpOverWebSocketProvider);
-  comparison.config(['httpOverWebSocketProvider', function (httpOverWebSocketProvider) {
-    httpOverWebSocketProvider.configure({
-      // Don't exclude any URLs.
-      exclude: [],
-      // Include the fake REST calls only, since that's the only thing the
-      // server is set up to handle.
-      include: [/^\/restOverWebSocket/],
-      primus: {
-        // Request timeout in milliseconds. Not the same as the various timeouts
-        // associated with Primus: this is how long to wait for a response to a
-        // specific request before rejecting the associated promise.
-        timeout: 10000,
-        // Delay in milliseconds between timeout checks.
-        timeoutCheckInterval: 100,
-        // Already connected primus instance.
-        instance: new Primus('/', {
-          // Default options.
-        })
-      }
-    });
-  }]);
+  comparison.provider('httpOverWebSocketTransport', httpOverWebSocketTransportProvider);
+  comparison.config([
+    'httpOverWebSocketProvider',
+    'httpOverWebSocketTransportProvider',
+    function (httpOverWebSocketProvider, httpOverWebSocketTransportProvider) {
+      httpOverWebSocketTransportProvider.configure({
+        transport: 'primus',
+        options: {
+          // Request timeout in milliseconds. Not the same as the various timeouts
+          // associated with Primus: this is how long to wait for a response to a
+          // specific request before rejecting the associated promise.
+          timeout: 10000,
+          // Delay in milliseconds between timeout checks.
+          timeoutCheckInterval: 100,
+          // Already connected primus instance.
+          instance: new Primus('/', {
+            // Default options for the Primus client.
+          })
+        }
+      });
+
+      httpOverWebSocketProvider.configure({
+        // Don't exclude any URLs.
+        exclude: [],
+        // Requests with URLs that match this regular expression are sent via
+        // WebSocket.
+        include: [/^\/restOverWebSocket/]
+      });
+    }
+  ]);
 
   /*---------------------------------------------------------------------------
   Set up the Controllers.

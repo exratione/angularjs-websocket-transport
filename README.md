@@ -53,7 +53,16 @@ primus.on('connection', function (spark) {
       return;
     }
 
-    // ... generate a response here
+    // Generate a response here. The response MUST be an object that at minimum
+    // has an _id property that matches that of the request. It should also
+    // contain a _status property.
+    var responseData = {
+      _id: data._id,
+      _status: 200,
+      stuff: {
+        // ...
+      }
+    }
 
     // Then send the response.
     spark.write(responseData);
@@ -82,26 +91,37 @@ httpOverWebSocket for $http as needed.
 ```
 myModule = angular.module(['ngRoute']);
 myModule.provider('httpOverWebSocket', httpOverWebSocketProvider);
-myModule.config(['httpOverWebSocketProvider', function (httpOverWebSocketProvider) {
-  httpOverWebSocketProvider.configure({
-    // Don't exclude any URLs.
-    exclude: [],
-    // Include URLs that match this regular expression.
-    include: [/^\/restOverWebSocket/],
-    primus: {
-      // Request timeout in milliseconds. Not the same as the various timeouts
-      // associated with Primus: this is how long to wait for a response to a
-      // specific request before rejecting the associated promise.
-      timeout: 10000,
-      // Delay in milliseconds between timeout checks.
-      timeoutCheckInterval: 100,
-      // Already connected primus instance.
-      instance: new Primus('/', {
-        // Default options for the Primus client.
-      })
-    }
-  });
-}]);
+myModule.provider('httpOverWebSocketTransport', httpOverWebSocketTransportProvider);
+
+myModule.config([
+  'httpOverWebSocketProvider',
+  'httpOverWebSocketTransportProvider',
+  function (httpOverWebSocketProvider, httpOverWebSocketTransportProvider) {
+    httpOverWebSocketTransportProvider.configure({
+      transport: 'primus',
+      options: {
+        // Request timeout in milliseconds. Not the same as the various timeouts
+        // associated with Primus: this is how long to wait for a response to a
+        // specific request before rejecting the associated promise.
+        timeout: 10000,
+        // Delay in milliseconds between timeout checks.
+        timeoutCheckInterval: 100,
+        // Already connected primus instance.
+        instance: new Primus('/', {
+          // Default options for the Primus client.
+        })
+      }
+    });
+
+    httpOverWebSocketProvider.configure({
+      // Don't exclude any URLs.
+      exclude: [],
+      // Requests with URLs that match this regular expression are sent via
+      // WebSocket.
+      include: [/^\/restOverWebSocket/]
+    });
+  }
+]);
 
 function myService($http) {
   // ...
@@ -152,3 +172,10 @@ be accessed at:
     https://192.168.35.10/
 
 [0]: https://github.com/primus/primus
+
+Current Differences Between $http and httpOverWebSocket Services
+----------------------------------------------------------------
+
+  * Request and response interceptors are not applied.
+  * No headers are added.
+  * WebSocket requests will always be sent to the connected WebSocket server regardless of URL.

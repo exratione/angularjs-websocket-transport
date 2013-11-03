@@ -2,7 +2,7 @@
   "name" : "angularjs-websocket-transport",
   "description": "A demonstration that replaces the AngularJS $http service with a WebSocket transport layer.",
   "keywords": ["AngularJS", "$http", "WebSocket"],
-  "version": "0.0.1",
+  "version": "0.0.2",
   "homepage": "https://github.com/exratione/angularjs-websocket-transport",
   "author": "Reason <reason@exratione.com>",
   "engines": {

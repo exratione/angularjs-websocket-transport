@@ -7,28 +7,40 @@
  * A provider and service that substitutes the standard behavior of the $http
  * service with communication over WebSockets.
  *
+ * myModule = angular.module(['ngRoute']);
  * myModule.provider('httpOverWebSocket', httpOverWebSocketProvider);
- * myModule.config(['httpOverWebSocketProvider', function (httpOverWebSocketProvider) {
- *  httpOverWebSocketProvider.configure({
- *    // Don't exclude any URLs.
- *    exclude: [],
- *    // Include the fake REST calls only, since that's the only thing the
- *    // server is set up to handle.
- *    include: [/^\/restOverWebSocket/],
- *    primus: {
- *      // Request timeout in milliseconds. Not the same as the various timeouts
- *      // associated with Primus: this is how long to wait for a response to a
- *      // specific request before rejecting the associated promise.
- *      timeout: 10000,
- *      // Delay in milliseconds between timeout checks.
- *      timeoutCheckInterval: 100,
- *      // Already connected primus instance.
- *      instance: new Primus('/', {
- *        // Default options.
- *      })
- *    }
- *  });
- *}]);
+ * myModule.provider('httpOverWebSocketTransport', httpOverWebSocketTransportProvider);
+ *
+ * myModule.config([
+ *   'httpOverWebSocketProvider',
+ *   'httpOverWebSocketTransportProvider',
+ *   function (httpOverWebSocketProvider, httpOverWebSocketTransportProvider) {
+ *     httpOverWebSocketTransportProvider.configure({
+ *       transport: 'primus',
+ *       options: {
+ *         // Request timeout in milliseconds. Not the same as the various
+ *         // timeouts associated with Primus: this is how long to wait for a
+ *         // response to a specific request before rejecting the associated
+ *         // promise.
+ *         timeout: 10000,
+ *         // Delay in milliseconds between timeout checks.
+ *         timeoutCheckInterval: 100,
+ *         // Already connected primus instance.
+ *         instance: new Primus('/', {
+ *           // Default options for the Primus client.
+ *         })
+ *       }
+ *     });
+ *
+ *     httpOverWebSocketProvider.configure({
+ *       // Don't exclude any URLs.
+ *       exclude: [],
+ *       // Requests with URLs that match this regular expression are sent via
+ *       // WebSocket.
+ *       include: [/^\/restOverWebSocket/]
+ *     });
+ *   }
+ * ]);
  *
  * Then include the service 'httpOverWebSocket' in place of $http. e.g.:
  *
@@ -40,7 +52,9 @@
  *  myService
  * ]);
  */
+
 var httpOverWebSocketProvider;
+var httpOverWebSocketTransportProvider;
 
 (function () {
   'use strict';
@@ -74,13 +88,14 @@ var httpOverWebSocketProvider;
    * @param {object} $rootScope
    * @param {object} $interval
    */
-  function Transport (config, $q, $rootScope, $interval) {
+  function Transport (config, $cacheFactory, $q, $rootScope, $interval) {
     this.config = config || {};
 
     // Set up various defaults.
     this.requests = {};
     this.$q = $q;
     this.$rootScope = $rootScope;
+    this.defaultCache = $cacheFactory('httpOverWebSocketTransport');
 
     // Start the timeout checks running if a timeout is set.
     var self = this;
@@ -105,16 +120,108 @@ var httpOverWebSocketProvider;
    *   A promise that resolves to the response from the server.
    */
   Transport.prototype.send = function (requestConfig) {
-    var id = this.generateUuid();
-    this.requests[id] = {
-      deferred: this.$q.defer(),
-      config: requestConfig,
-    };
-    if (this.config.timeout) {
-      this.requests[id].timeoutAfter = Date.now() + this.config.timeout;
+    var self = this;
+    var requestId;
+
+    /**
+     * Helper function to create the deferred for the new request. We don't
+     * have to do this if an existing cachable request is running - we can
+     * return the promise associated with that deferred instead.
+     *
+     * @return {string}
+     *   The UUID of the new request.
+     */
+    function createDeferred() {
+      var id = self.generateUuid();
+      self.requests[id] = {
+        deferred: self.$q.defer(),
+        config: requestConfig,
+      };
+      if (self.config.timeout) {
+        self.requests[id].timeoutAfter = Date.now() + self.config.timeout;
+      }
+
+      // Add success and error functions to the promise - this is a straight
+      // clone from AngularJS code.
+      var promise = self.requests[id].deferred.promise;
+      promise.success = function(fn) {
+        promise.then(function(response) {
+          fn(response.data, response.status, response.headers, requestConfig);
+        });
+        return promise;
+      };
+
+      promise.error = function(fn) {
+        promise.then(null, function(response) {
+          fn(response.data, response.status, response.headers, requestConfig);
+        });
+        return promise;
+      };
+      return id;
     }
-    this.transmit(id, requestConfig);
-    return this.requests[id].deferred.promise;
+
+    /**
+     * A helper function that adds cache update functionality to a promise on
+     * resolution or rejection.
+     *
+     * @param {object} promise
+     */
+    function setPromiseToUpdateCacheOnResolution(promise, cache, url) {
+      promise.then(function (response) {
+        cache.set(url, angular.copy(response));
+      }, function () {
+        // On failure we want to clear the cache for this URL. There will be a
+        // promise there as a placeholder.
+        cache.remove(url);
+      });
+    }
+
+    // Is this a potentially cachable request? If so then work some magic. This
+    // follows the same basic logic as caching in the $ng.http service.
+    if (requestConfig.cache && requestConfig.method === 'GET') {
+      // Determine which cache we are using, the default, or one passed in by
+      // the user. The requestConfig.cache property can be either a cache
+      // instance or a boolean.
+      var cache = this.defaultCache;
+      if (typeof requestConfig.cache === 'object') {
+        cache = requestConfig.cache;
+      }
+
+      var response = cache.get(url);
+      var promise;
+      // No cached response? Then send the request and cache the promise.
+      if (!response) {
+        requestId = createDeferred();
+        promise = this.requests[requestId].deferred.promise;
+        setPromiseToUpdateCacheOnResolution(promise, cache, url);
+        cache.put(promise);
+        this.transmit(requestId, requestConfig);
+        return promise;
+      }
+      // If a request is in progress then there is a promise cached. Just return
+      // the promise - multiple listeners can be added by different lines of
+      // execution, and all will just work when it resolves or rejects.
+      else if (response.then) {
+        return response;
+      }
+      // Otherwise what is cached is the response object, which we can just
+      // copy, update with a new ID, and apply immediately to a freshly-created
+      // promise.
+      else {
+        requestId = createDeferred();
+        promise = this.requests[requestId].deferred.promise;
+        response = angular.copy(response);
+        response.id = requestId;
+        this.resolveResponse(response);
+        return promise;
+      }
+    // No caching: just create a local record and deferred, send the request,
+    // and return the promise. Nice and simple.
+    } else {
+      requestId = createDeferred();
+      this.transmit(requestId, requestConfig);
+      return this.requests[requestId].deferred.promise;
+    }
   };
 
   /**
@@ -144,40 +251,85 @@ var httpOverWebSocketProvider;
   };
 
   /**
+   * Does this HTTP status indicate success.?
+   *
+   * @param {number} status
+   *   HTTP status code.
+   * @return {boolean}
+   *   True if a success status code.
+   */
+  Transport.prototype.isSuccessStatus = function (status) {
+    return 200 <= status && status < 300;
+  };
+
+  /**
    * Create something that looks like the $http response provided by AngularJS.
    *
+   * @param {string} id
+   *   The UUID of this request.
+   * @param {number} status
+   *   HTTP status code. Defaults to 200 if omitted.
    * @param {object} data
    *   Response data.
    * @param {object} requestConfig
    *   Request configuration passed in.
    * @return {object}
    */
-  Transport.prototype.createHttpSuccessResponse = function (data, requestConfig) {
+  Transport.prototype.createHttpResponse = function (id, status, data) {
     data = angular.copy(data);
+    status = status || 200;
     return {
+      id: id,
       data: data,
-      status: 200,
+      status: status,
       headers: {},
-      config: requestConfig
+      config: this.requests[id].requestConfig
     };
   };
 
   /**
    * Create something that looks like the $http response provided by AngularJS.
    *
+   * @param {string} id
+   *   The UUID of this request.
    * @param {string} error
    *   Error provided.
-   * @param {object} requestConfig
-   *   Request configuration passed in.
    * @return {object}
    */
-  Transport.prototype.createHttpTimeoutResponse = function (error, requestConfig) {
-    return {
-      data: error,
-      status: 0,
-      headers: {},
-      config: requestConfig
-    };
+  Transport.prototype.createHttpTimeoutResponse = function (id, error) {
+    return this.createHttpResponse(id, 0, error);
+  };
+
+  /**
+   * Either resolve or reject the deferred based on the response. The format is:
+   *
+   * {
+   *   // This UUID of this request.
+   *   id: ''
+   *   // Response data.
+   *   data: {},
+   *   // HTTP status.
+   *   status: 200
+   *   headers: {},
+   *   // Original request config object.
+   *   config: {}
+   * }
+   *
+   * Also remove the data for this request.
+   *
+   * @param {object} response
+   */
+  Transport.prototype.resolveResponse = function (response) {
+    // Make sure we drop the stored information on this request. It's no longer
+    // needed.
+    var deferred = this.requests[response.id].deferred;
+    delete this.requests[response];
+
+    if (this.isSuccessStatus(response.status)) {
+      deferred.resolve(response);
+    } else {
+      deferred.reject(response);
+    }
   };
 
   /**
@@ -185,12 +337,9 @@ var httpOverWebSocketProvider;
    */
   Transport.prototype.runTimeoutCheck = function () {
     var now = Date.now();
-    for (var prop in this.requests) {
-      if (this.requests[prop].timeoutAfter && this.requests[prop].timeoutAfter < now) {
-        var deferred = this.requests[prop].deferred;
-        var requestConfig = this.requests[prop].config;
-        delete this.requests[prop];
-        deferred.reject(this.createHttpTimeoutResponse('Timed out.', requestConfig));
+    for (var id in this.requests) {
+      if (this.requests[id].timeoutAfter && this.requests[id].timeoutAfter < now) {
+        this.resolveResponse(this.createHttpTimeoutResponse(id, 'Timed out.'));
       }
     }
   };
@@ -207,7 +356,7 @@ var httpOverWebSocketProvider;
    * @param {object} config
    * @param {object} $q
    */
-  function PrimusTransport (config, $q, $rootScope, $interval) {
+  function PrimusTransport (config, $cacheFactory, $q, $rootScope, $interval) {
     PrimusTransport.super_.apply(this, arguments);
     var self = this;
 
@@ -229,20 +378,20 @@ var httpOverWebSocketProvider;
         return;
       }
 
-      if (!self.requests[data._id]) {
+      // Extract the ID and status, since we don't want to return that with the
+      // data.
+      var id = data._id;
+      var status = data._status || 200;
+      delete data._id;
+      delete data._status;
+
+      if (!self.requests[id]) {
         // Throw and let Angular handle the error.
-        throw new Error('httpOverWebSocket: response came back with ID ' + data._id + ' but no matching request found.');
+        throw new Error('httpOverWebSocketTransport: response has ID ' + data._id + ' but no matching request found.');
       }
 
-      var deferred = self.requests[data._id].deferred;
-      var requestConfig = self.requests[data._id].config;
-      delete self.requests[data._id];
-      delete data._id;
-
-      // Send back something that looks like a $http 200 response.
-      $rootScope.$apply(function () {
-        deferred.resolve(self.createHttpSuccessResponse(data, requestConfig));
-      });
+      // Send back something that looks like a $http response.
+      self.resolveResponse(self.createHttpResponse(id, status, data));
     });
   }
   inherits(PrimusTransport, Transport);
@@ -251,6 +400,11 @@ var httpOverWebSocketProvider;
    * @see Transport#transmit
    */
   PrimusTransport.prototype.transmit = function (id, requestConfig) {
+    // Get rid of items we don't want to transmit, but retain the original
+    // requestConfig intact.
+    requestConfig = angular.copy(requestConfig);
+    delete requestConfig.cache;
+
     // Use the existence of an _id property to determine that this is a message
     // associated with httpOverWebSocket.
     requestConfig._id = id;
@@ -258,22 +412,20 @@ var httpOverWebSocketProvider;
   };
 
   /* -------------------------------------------------------------------------
-  Provider: httpOverWebSocketProvider
+  Provider: httpOverWebSocketTransportProvider
   ------------------------------------------------------------------------- */
 
   /**
-   * httpOverWebSocketProvider
+   * httpOverWebSocketTransportProvider
    *
+   * Provides the underlying transport layer.
    */
-  httpOverWebSocketProvider = function httpOverWebSocketProvider() {
+  httpOverWebSocketTransportProvider = function httpOverWebSocketTransportProvider() {
 
     var config = {
-      // Are we excluding any URLs, and passing them through to plain $http?
-      exclude: [],
-      // Which URLs are we including?
-      include: [],
-      // Options to pass to Primus.
-      primus: {
+      transport: 'primus',
+      // Options to pass to the transport.
+      options: {
         // Request timeout in milliseconds. Not the same as the various timeouts
         // associated with Primus: this is how long to wait for a response to a
         // specific request before rejecting the associated promise.
@@ -301,11 +453,54 @@ var httpOverWebSocketProvider;
     };
 
     /**
+     * Return an httpOverWebSocketTransport service instance.
+     *
+     * @return {Function}
+     */
+    this.$get = ['$http', '$cacheFactory', '$q', '$rootScope', '$interval', function ($http, $cacheFactory, $q, $rootScope, $interval) {
+      if (config.transport === 'primus') {
+        return new PrimusTransport(config.options, $cacheFactory, $q, $rootScope, $interval);
+      } else {
+        throw new Error('Invalid transport specified for httpOverWebSocketTransportProvider: ' + config.transport);
+      }
+    }];
+  };
+
+  /* -------------------------------------------------------------------------
+  Provider: httpOverWebSocketProvider
+  ------------------------------------------------------------------------- */
+
+  /**
+   * httpOverWebSocketProvider
+   *
+   * Provides an interface to match that of ng.$http.
+   */
+  httpOverWebSocketProvider = function httpOverWebSocketProvider() {
+
+    var config = {
+      // Are we excluding any URLs, and passing them through to plain $http?
+      exclude: [],
+      // Which URLs are we including?
+      include: []
+    };
+
+    /**
+     * Set the configuration for httpOverWebSocket service instances.
+     *
+     * @param {object} configuration
+     */
+    this.configure = function (providedConfig) {
+      for (var prop in providedConfig || {}) {
+        config[prop] = providedConfig[prop];
+      }
+    };
+
+    /**
      * Return an httpOverWebSocket service instance.
      *
      * @return {Function}
      */
-    this.$get = ['$http', '$q', '$rootScope', '$interval', function ($http, $q, $rootScope, $interval) {
+    this.$get = ['$http', 'httpOverWebSocketTransport', function ($http, httpOverWebSocketTransport) {
 
       /* ---------------------------------------------------------------------
       Service: httpOverWebSocket
@@ -328,14 +523,7 @@ var httpOverWebSocketProvider;
         // Route via httpOverWebSocket if there is an included match.
         for (index = 0; index < config.include.length; index++) {
           if (requestConfig.url.match(config.include[index])) {
-
-
-            // TODO: deal with requestConfig.cache in the right way.
-            delete requestConfig.cache;
-
-
-
-            return httpOverWebSocket.transport.send(requestConfig);
+            return httpOverWebSocketTransport.send(requestConfig);
           }
         }
 
@@ -364,12 +552,9 @@ var httpOverWebSocketProvider;
       httpOverWebSocket.head = function (url, requestConfig) {
         return ajunct('HEAD', url, requestConfig);
       };
-
-      // TODO: httpOverWebSocket.jsonp() what extras?
-      //httpOverWebSocket.jsonp = function (url, requestConfig) {
-      //  return ajunct('jsonp', url, requestConfig);
-      //};
-
+      httpOverWebSocket.jsonp = function (url, requestConfig) {
+        return ajunct('JSONP', url, requestConfig);
+      };
 
       httpOverWebSocket.post = function (url, data, requestConfig) {
         return ajunct('POST', requestConfig, data);
@@ -377,15 +562,6 @@ var httpOverWebSocketProvider;
       httpOverWebSocket.put = function (url, data, requestConfig) {
         return ajunct('PUT', url, requestConfig, data);
       };
-
-      /* ---------------------------------------------------------------------
-      Set the transport.
-      --------------------------------------------------------------------- */
-
-      // Only Primus as a transport option for now, since that is an abstraction
-      // layer for all the other options we might have included here, such as
-      // Engine.IO, Socket.IO, etc.
-      httpOverWebSocket.transport = new PrimusTransport(config.primus, $q, $rootScope, $interval);
 
       return httpOverWebSocket;
     }];
