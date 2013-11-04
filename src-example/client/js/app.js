@@ -108,6 +108,11 @@
       result.success = success;
       result.elapsed = result.endTime - result.startTime;
       result.responseData = JSON.stringify(response.data);
+
+      // Complete the run if we're done.
+      if (!$scope.isRunning()) {
+        $scope.runEnded();
+      }
     }
 
     /**
@@ -115,7 +120,7 @@
      * URL matches.
      *
      * @param  {Function} [callback]
-     *   Optional callback.
+     *   Optional callback. Invoked when the request completes.
      */
     function sendRequest(url, callback) {
       var index = requestStarted();
@@ -164,30 +169,44 @@
      * Is a test current running?
      */
     $scope.isRunning = function () {
-      return (this.time.started && !this.time.ended);
+      if (!this.run.started || this.run.ended) {
+        return false;
+      }
+      if (this.results.length < this.run.count) {
+        return true;
+      } else {
+        return this.results.some(function (result) {
+          return !result.completed;
+        });
+      }
     };
 
     /**
      * Note that a run started.
+     *
+     * @param {number} requestCount
+     *   The number of requests to make.
      */
-    $scope.runStarted = function () {
+    $scope.runStarted = function (requestCount) {
       this.clear();
-      this.time.started = Date.now();
+      this.run.count = requestCount;
+      this.run.started = Date.now();
     };
 
     /**
      * Note that a run ended.
      */
     $scope.runEnded = function () {
-      this.time.ended = Date.now();
-      this.time.elapsed = this.time.ended - this.time.started;
+      this.run.ended = Date.now();
+      this.run.elapsed = this.run.ended - this.run.started;
     };
 
     /**
      * Clear the current test results.
      */
     $scope.clear = function () {
-      this.time = {
+      this.run = {
+        count: this.count,
         started: undefined,
         ended: undefined,
         elapsed: undefined,
@@ -221,12 +240,10 @@
 
       var self = this;
       var runUrl = getRunUrl($scope.httpUrl);
-      this.runStarted();
+      this.runStarted(this.count);
       async.timesSeries(this.count, function (index, asyncCallback) {
         sendRequest(runUrl, asyncCallback);
-      }, function () {
-        self.runEnded();
-      });
+      }, function () {});
     };
 
     /**
@@ -239,12 +256,11 @@
 
       var self = this;
       var runUrl = getRunUrl($scope.httpUrl);
-      this.runStarted();
+      this.runStarted(this.count);
       async.times(this.count, function (index, asyncCallback) {
-        sendRequest(runUrl, asyncCallback);
-      }, function () {
-        self.runEnded();
-      });
+        sendRequest(runUrl);
+        asyncCallback();
+      }, function () {});
     };
 
     /**
@@ -257,12 +273,10 @@
 
       var self = this;
       var runUrl = getRunUrl($scope.httpOverWebSocketUrl);
-      this.runStarted();
+      this.runStarted(this.count);
       async.timesSeries(this.count, function (index, asyncCallback) {
         sendRequest(runUrl, asyncCallback);
-      }, function () {
-        self.runEnded();
-      });
+      }, function () {});
     };
 
     /**
@@ -275,12 +289,11 @@
 
       var self = this;
       var runUrl = getRunUrl($scope.httpOverWebSocketUrl);
-      this.runStarted();
+      this.runStarted(this.count);
       async.times(this.count, function (index, asyncCallback) {
-        sendRequest(runUrl, asyncCallback);
-      }, function () {
-        self.runEnded();
-      });
+        sendRequest(runUrl);
+        asyncCallback();
+      }, function () {});
     };
 
     /*----------------------------------------------------------------------
@@ -294,8 +307,6 @@
     $scope.countOptions = [1, 6, 10, 20];
     $scope.httpUrl = '/rest';
     $scope.httpOverWebSocketUrl = '/restOverWebSocket';
-    $scope.title = 'Comparing HTTP/S vrs WebSocket for Data Transfer';
-
   }
 
   // Create the application controller. Only a single controller here to go

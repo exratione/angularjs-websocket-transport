@@ -7,7 +7,7 @@ Node.js webserver and WebSocket implementation on the server, such as Express
 and Engine.IO.
 
   * For AngularJS, a plug-in replacement for the $http service.
-  * Requests are faster than HTTP/S in modern browsers, especially when concurrent.
+  * Requests are faster than HTTP/S in modern browsers for most scenarios.
   * Requires Node.js on the server.
   * Uses [Primus][0] as an abstraction layer for WebSocket implementations.
 

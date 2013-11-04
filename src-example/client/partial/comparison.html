@@ -1,8 +1,16 @@
+<h4>Comparing AngularJS ng.$http Versus httpOverWebSocket</h4>
+
+<p>
+Use the buttons below to run the same REST-like requests over HTTP/S or
+WebSocket connections. Results are displayed in the table as they arrive.
+Note that some browsers will cache HTTP/S requests issued in parallel.
+</p>
+
 <div class="wrapper">
   <button data-ng-click="httpParallel()">HTTP Parallel</button>
   <button data-ng-click="httpSeries()">HTTP Series</button>
-  <button data-ng-click="httpOverWebSocketParallel()">Socket Parallel</button>
-  <button data-ng-click="httpOverWebSocketSeries()">Socket Series</button>
+  <button data-ng-click="httpOverWebSocketParallel()">WebSocket Parallel</button>
+  <button data-ng-click="httpOverWebSocketSeries()">WebSocket Series</button>
 </div>
 
 <div class="wrapper">
@@ -12,22 +20,22 @@
     data-ng-options="value for value in countOptions"
   ></select>
 
-  Use cache:
+  Use AngularJS cache:
   <input
     type="checkbox"
     data-ng-model="useCache"
   />
 </div>
 
-<div class="wrapper" data-ng-show="time.ended">
-  <span>Time to complete test: {{time.elapsed}}
+<div class="wrapper" data-ng-show="run.ended">
+  <b>Time to complete test: {{run.elapsed}}ms</b>
 </div>
 
 <table>
   <tr>
     <th class="number">#</th>
     <th class="status">Status</th>
-    <th class="elapsed">Elapsed</th>
+    <th class="elapsed">Request Duration (ms)</th>
     <th class="elapsed">Response</th>
   </tr>
   <tr data-ng-hide="results.length">
