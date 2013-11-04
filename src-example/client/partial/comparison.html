@@ -11,6 +11,12 @@
     data-ng-model="count"
     data-ng-options="value for value in countOptions"
   ></select>
+
+  Use cache:
+  <input
+    type="checkbox"
+    data-ng-model="useCache"
+  />
 </div>
 
 <div class="wrapper" data-ng-show="time.ended">
@@ -22,9 +28,10 @@
     <th class="number">#</th>
     <th class="status">Status</th>
     <th class="elapsed">Elapsed</th>
+    <th class="elapsed">Response</th>
   </tr>
   <tr data-ng-hide="results.length">
-    <td class="no-results" colspan="3">
+    <td class="no-results" colspan="4">
       No test results.
     </td>
   </tr>
@@ -32,5 +39,6 @@
     <td>{{result.index}}</td>
     <td>{{resultStatus($index)}}</td>
     <td>{{result.elapsed}}</td>
+    <td>{{result.responseData}}</td>
   </tr>
 </table>

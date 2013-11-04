@@ -83,24 +83,6 @@
     ----------------------------------------------------------------------*/
 
     /**
-     * If there is any chance of $scope.$apply() calls overlapping, as a result
-     * of close-running inputs from outside AngularJS then use this instead.
-     *
-     * @param {Function} fn
-     *   A function to call, and which will most likely alter $scope values.
-     */
-    $scope.$applySafely = function (fn) {
-      var phase = this.$root.$$phase;
-      if (phase === '$apply' || phase === '$digest') {
-        if(typeof(fn) === 'function') {
-          fn();
-        }
-      } else {
-        this.$apply(fn);
-      }
-    };
-
-    /**
      * Note that a request is started.
      *
      * @return {number}
@@ -119,56 +101,35 @@
     /**
      * Deal with the response from the server.
      */
-    function processResponse(index, success) {
+    function processResponse(index, success, response) {
       var result = $scope.results[index];
       result.endTime = Date.now();
       result.completed = true;
       result.success = success;
       result.elapsed = result.endTime - result.startTime;
+      result.responseData = JSON.stringify(response.data);
     }
 
     /**
-     * Send an HTTP request to the server.
+     * Send an HTTP request to the server, which may go via WebSocket if the
+     * URL matches.
      *
      * @param  {Function} [callback]
      *   Optional callback.
      */
-    function sendHttpRequest(callback) {
+    function sendRequest(url, callback) {
       var index = requestStarted();
       $http({
+        cache: $scope.useCache,
         method: 'GET',
-        url: $scope.httpUrl + '?t=' + Date.now()
+        url: url
       }).then(function (response) {
-        processResponse(index, true);
+        processResponse(index, true, response);
         if (callback) {
           callback();
         }
       }, function () {
-        processResponse(index, false);
-        if (callback) {
-          callback();
-        }
-      });
-    }
-
-    /**
-     * Send an HTTP request to the server.
-     *
-     * @param  {Function} [callback]
-     *   Optional callback.
-     */
-    function sendHttpOverWebSocketRequest(callback) {
-      var index = requestStarted();
-      $http({
-        method: 'GET',
-        url: $scope.httpOverWebSocketUrl + '?t=' + Date.now()
-      }).then(function (response) {
-        processResponse(index, true);
-        if (callback) {
-          callback();
-        }
-      }, function () {
-        processResponse(index, false);
+        processResponse(index, false, response);
         if (callback) {
           callback();
         }
@@ -236,6 +197,16 @@
       this.socketCallbacks = [];
     };
 
+    /**
+     * Return a unique URL for this run.
+     *
+     * @param {string} baseUrl
+     * @return {string}
+     */
+    function getRunUrl(baseUrl) {
+      return baseUrl + '/' + Date.now();
+    }
+
     /*----------------------------------------------------------------------
     Test running functions.
     ----------------------------------------------------------------------*/
@@ -249,9 +220,10 @@
       }
 
       var self = this;
+      var runUrl = getRunUrl($scope.httpUrl);
       this.runStarted();
       async.timesSeries(this.count, function (index, asyncCallback) {
-        sendHttpRequest(asyncCallback);
+        sendRequest(runUrl, asyncCallback);
       }, function () {
         self.runEnded();
       });
@@ -266,9 +238,10 @@
       }
 
       var self = this;
+      var runUrl = getRunUrl($scope.httpUrl);
       this.runStarted();
       async.times(this.count, function (index, asyncCallback) {
-        sendHttpRequest(asyncCallback);
+        sendRequest(runUrl, asyncCallback);
       }, function () {
         self.runEnded();
       });
@@ -283,9 +256,10 @@
       }
 
       var self = this;
+      var runUrl = getRunUrl($scope.httpOverWebSocketUrl);
       this.runStarted();
       async.timesSeries(this.count, function (index, asyncCallback) {
-        sendHttpOverWebSocketRequest(asyncCallback);
+        sendRequest(runUrl, asyncCallback);
       }, function () {
         self.runEnded();
       });
@@ -300,9 +274,10 @@
       }
 
       var self = this;
+      var runUrl = getRunUrl($scope.httpOverWebSocketUrl);
       this.runStarted();
       async.times(this.count, function (index, asyncCallback) {
-        sendHttpOverWebSocketRequest(asyncCallback);
+        sendRequest(runUrl, asyncCallback);
       }, function () {
         self.runEnded();
       });
@@ -315,6 +290,7 @@
     $scope.clear();
     // The normal limit on concurrent HTTP requests in Firefox.
     $scope.count = 6;
+    $scope.useCache = false;
     $scope.countOptions = [1, 6, 10, 20];
     $scope.httpUrl = '/rest';
     $scope.httpOverWebSocketUrl = '/restOverWebSocket';

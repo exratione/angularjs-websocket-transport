@@ -168,7 +168,7 @@ var httpOverWebSocketTransportProvider;
      */
     function setPromiseToUpdateCacheOnResolution(promise, cache, url) {
       promise.then(function (response) {
-        cache.set(url, angular.copy(response));
+        cache.put(url, angular.copy(response));
       }, function () {
         // On failure we want to clear the cache for this URL. There will be a
         // promise there as a placeholder.
@@ -187,14 +187,14 @@ var httpOverWebSocketTransportProvider;
         cache = requestConfig.cache;
       }
 
-      var response = cache.get(url);
+      var response = cache.get(requestConfig.url);
       var promise;
       // No cached response? Then send the request and cache the promise.
       if (!response) {
         requestId = createDeferred();
         promise = this.requests[requestId].deferred.promise;
-        setPromiseToUpdateCacheOnResolution(promise, cache, url);
-        cache.put(promise);
+        setPromiseToUpdateCacheOnResolution(promise, cache, requestConfig.url);
+        cache.put(requestConfig.url, promise);
         this.transmit(requestId, requestConfig);
         return promise;
       }

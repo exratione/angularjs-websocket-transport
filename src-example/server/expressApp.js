@@ -21,7 +21,7 @@ Functionality shared between HTTP/S and WebSocket transports.
 function getResponseData(callback) {
   setTimeout(function () {
     var response = {};
-    response['alpha-' + Math.random()] = Math.random();
+    response[Math.floor(Math.random() * 1000)] = Math.floor(Math.random() * 1000);
     callback(response);
   }, 50);
 }
@@ -46,7 +46,7 @@ app.use(function (request, response, next) {
 app.use(express.static(path.join(__dirname, '../client')));
 
 // A path for fake REST requests.
-app.all('/rest', function (request, response, next) {
+app.all('/rest/:ts', function (request, response, next) {
   getResponseData(function (data) {
     response.json(data);
   });
