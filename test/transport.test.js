@@ -7,7 +7,7 @@
 */
 /**
  * @fileOverview
- * Tests for the Transport superclass functions.
+ * Tests for the Transport superclass functionality.
  */
 
 describe('Transport', function () {
@@ -18,7 +18,8 @@ describe('Transport', function () {
       $q,
       $interval,
       config,
-      transport;
+      transport,
+      uuidRegExp = /[a-z0-9]{8}-[a-z0-9]{4}-4[a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}/;
 
   /**
    * Generate something suitable to be put into the transport.requests object.
@@ -45,8 +46,9 @@ describe('Transport', function () {
     inject(function($injector) {
       $httpBackend = $injector.get('$httpBackend');
       $cacheFactory = $injector.get('$cacheFactory');
-      $q = $injector.get('$cacheFactory');
-      // This will disable the timeout check loop.
+      $q = $injector.get('$q');
+      // This will disable the timeout check loop, which we don't want running
+      // here anyway.
       $interval = jasmine.createSpy();
     });
 
@@ -81,7 +83,7 @@ describe('Transport', function () {
     var shouldThrow = function () {
       transport.transmit('id', {
         method: 'GET',
-        url: 'http://example.com'
+        url: '/example'
       });
     };
     expect(shouldThrow).toThrow();
@@ -89,8 +91,7 @@ describe('Transport', function () {
 
   // Does the UUID generator produce the right result?
   it('transport.generateUuid()', function () {
-    var regexp = /[a-z0-9]{8}-[a-z0-9]{4}-4[a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}/;
-    expect(transport.generateUuid()).toMatch(regexp);
+    expect(transport.generateUuid()).toMatch(uuidRegExp);
   });
 
   // Testing the tail end of the request process, after a response has been
@@ -158,6 +159,127 @@ describe('Transport', function () {
     expect(dummyRequestA.deferred.reject).not.toHaveBeenCalled();
     expect(dummyRequestB.deferred.reject).not.toHaveBeenCalled();
     expect(dummyRequestC.deferred.reject).toHaveBeenCalled();
+  });
+
+  it('transport.send() GET request without cache', function () {
+    // Replace the always-throwing unimplemented transmit() method with a spy.
+    transport.transmit = jasmine.createSpy();
+    var requestConfig = {
+      method: 'GET',
+      url: '/example'
+    };
+
+    var promise = transport.send(requestConfig);
+
+    // Haul out the ID of the request and the request marker object.
+    var requestIds = Object.keys(transport.requests);
+    expect(requestIds.length).toBe(1);
+    var requestId = requestIds[0];
+    expect(requestId).toMatch(uuidRegExp);
+    var request = transport.requests[requestIds[0]];
+    expect(request.requestConfig).toBe(requestConfig);
+
+    // Was the deferred created and the promise extended?
+    expect(request.deferred).toBeDefined();
+    expect(request.deferred.promise).toBeDefined();
+    expect(request.deferred.promise.success).toBeDefined();
+    expect(request.deferred.promise.error).toBeDefined();
+    expect(request.deferred.resolve).toBeDefined();
+    expect(request.deferred.reject).toBeDefined();
+
+    expect(request.deferred.promise).toBe(promise);
+
+    // No timeout here.
+    expect(request.timeoutAfter).not.toBeDefined();
+
+    // And it should have been sent through.
+    expect(transport.transmit).toHaveBeenCalledWith(requestId, requestConfig);
+  });
+
+  it('transport.send() non-GET requests do not cache', function () {
+    // Replace the always-throwing unimplemented transmit() method with a spy.
+    transport.transmit = jasmine.createSpy();
+    var url = '/example';
+    var promises = {};
+
+    angular.forEach(['DELETE', 'HEAD', 'JSONP', 'POST', 'PUT'], function (method) {
+      promises[method] = [];
+      promises[method][0] = transport.send({
+        method: method,
+        url: url,
+        data: {},
+        cache: true
+      });
+      promises[method][1] = transport.send({
+        method: method,
+        url: url,
+        data: {},
+        cache: true
+      });
+    });
+
+    expect(transport.transmit.callCount).toBe(10);
+
+    // And the default cache should be empty.
+    var promise = transport.defaultCache.get(url);
+    expect(promise).toBe(undefined);
+  });
+
+  it('transport.send() GET with default cache', function () {
+    // Replace the always-throwing unimplemented transmit() method with a spy.
+    transport.transmit = jasmine.createSpy();
+    var url = '/example';
+
+    var promiseA = transport.send({
+      method: 'GET',
+      url: url,
+      cache: true
+    });
+    var promiseB = transport.send({
+      method: 'GET',
+      url: url,
+      cache: true
+    });
+
+    // 1 not 2 because only one of the GET requests is sent through.
+    expect(transport.transmit.callCount).toBe(1);
+
+    // And the default cache should have a promise in it because the first
+    // request has yet to resolve.
+    //
+    // That should be the same promise returned by send() for both GET requests.
+    var promise = transport.defaultCache.get(url);
+    expect(promise).toBe(promiseA);
+    expect(promise).toBe(promiseB);
+  });
+
+  it('transport.send() GET with cache object', function () {
+    // Replace the always-throwing unimplemented transmit() method with a spy.
+    transport.transmit = jasmine.createSpy();
+    var url = '/example';
+    var cache = $cacheFactory('test transport');
+
+    var promiseA = transport.send({
+      method: 'GET',
+      url: url,
+      cache: cache
+    });
+    var promiseB = transport.send({
+      method: 'GET',
+      url: url,
+      cache: cache
+    });
+
+    // 1 not 2 because only one of the GET requests is sent through.
+    expect(transport.transmit.callCount).toBe(1);
+
+    // The cache should have a promise in it because the first request has yet
+    // to resolve.
+    //
+    // That should be the same promise returned by send() for both GET requests.
+    var promise = cache.get(url);
+    expect(promise).toBe(promiseA);
+    expect(promise).toBe(promiseB);
   });
 
 });
