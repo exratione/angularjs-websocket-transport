@@ -81,7 +81,6 @@ primus.save(path.join(__dirname, '../client/js/lib/primus.js'));
 // Set up a listener. This is missing the error checks and other epicycles that
 // non-example code would have.
 primus.on('connection', function (spark) {
-
   var ID = '_howsId';
   var STATUS = '_howsStatus';
 

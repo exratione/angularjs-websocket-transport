@@ -17,7 +17,7 @@
    * The assumption here is that this will be used in conjunction with the mock
    * $httpBackend, in exactly the same way that standard $http testing proceeds.
    */
-  function MockTransport(config, $cacheFactory, $q, $rootScope, $interval, $httpBackend) {
+  function MockTransport(config, $cacheFactory, $q, $interval, $httpBackend) {
     MockTransport.super_.apply(this, arguments);
   }
   angular.httpOverWebSocket.inherits(MockTransport, angular.httpOverWebSocket.transports.Transport);
@@ -93,11 +93,10 @@
     this.$get = [
       '$cacheFactory',
       '$q',
-      '$rootScope',
       '$interval',
       '$httpBackend',
-      function ($cacheFactory, $q, $rootScope, $interval, $httpBackend) {
-        return new MockTransport(config, $cacheFactory, $q, $rootScope, $interval, $httpBackend);
+      function ($cacheFactory, $q, $interval, $httpBackend) {
+        return new MockTransport(config, $cacheFactory, $q, $interval, $httpBackend);
       }
     ];
   };

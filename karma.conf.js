@@ -16,7 +16,7 @@ module.exports = function(config) {
       'test/angular-mocks.1.2.0.js',
       'src/httpOverWebSocket.js',
       'test/httpOverWebSocketMocks.js',
-      'test/**/*.spec.js'
+      'test/**/*.test.js'
     ],
 
     // list of files to exclude
@@ -41,7 +41,7 @@ module.exports = function(config) {
     // possible values: config.LOG_DISABLE || config.LOG_ERROR || config.LOG_WARN || config.LOG_INFO || config.LOG_DEBUG
     // CLI --log-level debug
     //logLevel: config.LOG_INFO,
-    logLevel: config.LOG_DEBUG,
+    logLevel: config.LOG_INFO,
 
     // enable / disable watching file and executing tests whenever any file changes
     // CLI --auto-watch --no-auto-watch

@@ -82,16 +82,14 @@
    *
    * @param {object} config
    * @param {object} $q
-   * @param {object} $rootScope
    * @param {object} $interval
    */
-  function Transport (config, $cacheFactory, $q, $rootScope, $interval) {
+  function Transport (config, $cacheFactory, $q, $interval) {
     this.config = config || {};
 
     // Set up various defaults.
     this.requests = {};
     this.$q = $q;
-    this.$rootScope = $rootScope;
     this.defaultCache = $cacheFactory('httpOverWebSocketTransport');
 
     // Start the timeout checks running.
@@ -131,7 +129,7 @@
       var id = self.generateUuid();
       self.requests[id] = {
         deferred: self.$q.defer(),
-        config: requestConfig,
+        requestConfig: requestConfig,
       };
 
       // Manage timeout.
@@ -270,7 +268,8 @@
    * @param {string} id
    *   The UUID of this request.
    * @param {number} status
-   *   HTTP status code. Defaults to 200 if omitted.
+   *   HTTP status code. Defaults to 200 if something other than a number is
+   *   passed in.
    * @param {object} data
    *   Response data.
    * @param {object} requestConfig
@@ -279,7 +278,9 @@
    */
   Transport.prototype.createHttpResponse = function (id, status, data) {
     data = angular.copy(data);
-    status = status || 200;
+    if (typeof status !== 'number') {
+      status = 200;
+    }
     return {
       id: id,
       data: data,
@@ -325,7 +326,7 @@
     // Make sure we drop the stored information on this request. It's no longer
     // needed.
     var deferred = this.requests[response.id].deferred;
-    delete this.requests[response];
+    delete this.requests[response.id];
 
     if (this.isSuccessStatus(response.status)) {
       deferred.resolve(response);
@@ -358,7 +359,7 @@
    * @param {object} config
    * @param {object} $q
    */
-  function PrimusTransport (config, $cacheFactory, $q, $rootScope, $interval) {
+  function PrimusTransport (config, $cacheFactory, $q, $interval) {
     PrimusTransport.super_.apply(this, arguments);
     var self = this;
     var ID = angular.httpOverWebSocket.ID;
@@ -463,11 +464,10 @@
     this.$get = [
       '$cacheFactory',
       '$q',
-      '$rootScope',
       '$interval',
-      function ($cacheFactory, $q, $rootScope, $interval) {
+      function ($cacheFactory, $q, $interval) {
         if (config.transport === 'primus') {
-          return new PrimusTransport(config.options, $cacheFactory, $q, $rootScope, $interval);
+          return new PrimusTransport(config.options, $cacheFactory, $q, $interval);
         } else {
           throw new Error('Invalid transport specified for angular.httpOverWebSocket.TransportProvider: ' + config.transport);
         }
