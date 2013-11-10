@@ -19,6 +19,7 @@
    */
   function MockTransport(config, $cacheFactory, $q, $interval, $httpBackend) {
     MockTransport.super_.apply(this, arguments);
+    this.$httpBackend = $httpBackend;
   }
   angular.httpOverWebSocket.inherits(MockTransport, angular.httpOverWebSocket.transports.Transport);
 
@@ -48,7 +49,7 @@
     var responseType;
 
     /// Run the request into the mock backend.
-    $httpBackend(
+    this.$httpBackend(
       requestConfig.method,
       requestConfig.url,
       requestConfig.data,

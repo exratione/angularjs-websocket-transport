@@ -1,3 +1,7 @@
+/*jshint
+  node: true,
+  strict: false
+*/
 /**
  * @fileOverview
  * The Express application.

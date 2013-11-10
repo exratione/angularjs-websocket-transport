@@ -134,7 +134,7 @@
 
       // Manage timeout.
       var timeout = self.config.timeout;
-      if (typeof requestConfig.timeout === "number") {
+      if (typeof requestConfig.timeout === 'number') {
         timeout = requestConfig.timeout;
       }
       if (timeout > 0) {
@@ -235,7 +235,7 @@
    *   Data to be sent.
    */
   Transport.prototype.transmit = function (id, requestConfig) {
-    throw new Error("Not implemented.");
+    throw new Error('Not implemented.');
   };
 
   /**
@@ -245,7 +245,7 @@
    */
   Transport.prototype.generateUuid = function () {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+      var r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8);
       return v.toString(16);
     });
   };
@@ -553,23 +553,23 @@
       }
 
       httpOverWebSocket.delete = function (url, requestConfig) {
-        return ajunct('DELETE', url, requestConfig);
+        return adjunct('DELETE', url, requestConfig);
       };
       httpOverWebSocket.get = function (url, requestConfig) {
-        return ajunct('GET', url, requestConfig);
+        return adjunct('GET', url, requestConfig);
       };
       httpOverWebSocket.head = function (url, requestConfig) {
-        return ajunct('HEAD', url, requestConfig);
+        return adjunct('HEAD', url, requestConfig);
       };
       httpOverWebSocket.jsonp = function (url, requestConfig) {
-        return ajunct('JSONP', url, requestConfig);
+        return adjunct('JSONP', url, requestConfig);
       };
 
       httpOverWebSocket.post = function (url, data, requestConfig) {
-        return ajunct('POST', requestConfig, data);
+        return adjunct('POST', requestConfig, data);
       };
       httpOverWebSocket.put = function (url, data, requestConfig) {
-        return ajunct('PUT', url, requestConfig, data);
+        return adjunct('PUT', url, requestConfig, data);
       };
 
       return httpOverWebSocket;

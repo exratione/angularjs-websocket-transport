@@ -1,9 +1,11 @@
 /*global
+  angular: false,
   beforeEach: false,
   describe: false,
   expect: false,
   inject: false,
-  it: false
+  it: false,
+  jasmine: false
 */
 /**
  * @fileOverview

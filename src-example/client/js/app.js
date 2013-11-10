@@ -133,7 +133,7 @@
         if (callback) {
           callback();
         }
-      }, function () {
+      }, function (response) {
         processResponse(index, false, response);
         if (callback) {
           callback();
