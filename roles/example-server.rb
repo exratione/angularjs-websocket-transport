@@ -3,8 +3,8 @@ description 'An example server to demonstrate the AngularJS WebSocket Transport 
 
 run_list [
   'recipe[nodejs]',
-  'recipe[angularjs-websocket-transport::node_modules]',
+  'recipe[angularjs-websocket-transport::setup]',
   'recipe[forever-service]',
-  'recipe[angularjs-websocket-transport::haproxy_preparation]',
+  'recipe[angularjs-websocket-transport::haproxy_setup]',
   'recipe[haproxy]'
 ]

@@ -35,8 +35,8 @@
   Set up the httpOverWebSocket service, etc.
   ---------------------------------------------------------------------------*/
 
-  comparison.provider('httpOverWebSocket', httpOverWebSocketProvider);
-  comparison.provider('httpOverWebSocketTransport', httpOverWebSocketTransportProvider);
+  comparison.provider('httpOverWebSocket', angular.httpOverWebSocket.Provider);
+  comparison.provider('httpOverWebSocketTransport', angular.httpOverWebSocket.TransportProvider);
   comparison.config([
     'httpOverWebSocketProvider',
     'httpOverWebSocketTransportProvider',
@@ -44,9 +44,9 @@
       httpOverWebSocketTransportProvider.configure({
         transport: 'primus',
         options: {
-          // Request timeout in milliseconds. Not the same as the various timeouts
-          // associated with Primus: this is how long to wait for a response to a
-          // specific request before rejecting the associated promise.
+          // Default rquest timeout in milliseconds. Not the same as the various
+          // timeouts associated with Primus: this is how long to wait for a
+          // response to a request before rejecting the associated promise.
           timeout: 10000,
           // Delay in milliseconds between timeout checks.
           timeoutCheckInterval: 100,

@@ -1,6 +1,14 @@
 Changelog
 =========
 
+0.0.3
+-----
+
+  * Update to AngularJS 1.2.0.
+  * Add config.timeout support for requests.
+  * Add a mock transport layer and provider.
+  * Add Karma unit tests.
+
 0.0.2
 -----
 

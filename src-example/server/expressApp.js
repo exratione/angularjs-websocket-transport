@@ -81,19 +81,23 @@ primus.save(path.join(__dirname, '../client/js/lib/primus.js'));
 // Set up a listener. This is missing the error checks and other epicycles that
 // non-example code would have.
 primus.on('connection', function (spark) {
+
+  var ID = '_howsId';
+  var STATUS = '_howsStatus';
+
   // Set up the fake response to data requests.
   spark.on('data', function (data) {
     // Check to make sure that this is related to httpOverWebSocket. If not,
     // do nothing.
-    if (typeof data !== 'object' || !data._id) {
+    if (typeof data !== 'object' || !data[ID]) {
       return;
     }
 
     // Generate a fake delayed response and throw it back down the wire.
     getResponseData(function (responseData) {
       // Flag the data to match it up to the request and add a status.
-      responseData._id = data._id;
-      responseData._status = 200;
+      responseData[ID] = data[ID];
+      responseData[STATUS] = 200;
       // Then send it down the wire.
       spark.write(responseData);
     });

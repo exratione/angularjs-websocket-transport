@@ -8,8 +8,8 @@
  * service with communication over WebSockets.
  *
  * myModule = angular.module(['ngRoute']);
- * myModule.provider('httpOverWebSocket', httpOverWebSocketProvider);
- * myModule.provider('httpOverWebSocketTransport', httpOverWebSocketTransportProvider);
+ * myModule.provider('httpOverWebSocket', angular.httpOverWebSocket.Provider);
+ * myModule.provider('httpOverWebSocketTransport', angular.httpOverWebSocket.TransportProvider);
  *
  * myModule.config([
  *   'httpOverWebSocketProvider',
@@ -53,14 +53,11 @@
  * ]);
  */
 
-var httpOverWebSocketProvider;
-var httpOverWebSocketTransportProvider;
-
 (function () {
   'use strict';
 
   /* -------------------------------------------------------------------------
-  Utilities.
+  Definitions and Utilities.
   ------------------------------------------------------------------------- */
 
   // Add a prototypical inheritance function. Note that this will need es5-sham
@@ -97,18 +94,17 @@ var httpOverWebSocketTransportProvider;
     this.$rootScope = $rootScope;
     this.defaultCache = $cacheFactory('httpOverWebSocketTransport');
 
-    // Start the timeout checks running if a timeout is set.
+    // Start the timeout checks running.
     var self = this;
-    if (this.config.timeout) {
     // Make sure that this has a value.
-      this.config.timeoutCheckInterval = this.config.timeoutCheckInterval || 100;
-      // Continue indefinitely and don't run digests on each check.
-      var repeatCount = 0;
-      var invokeApply = false;
-      this.timeoutCheckPromise = $interval(function () {
-        self.runTimeoutCheck();
-      }, this.config.timeoutCheckInterval, repeatCount, invokeApply);
-    }
+    this.config.timeout = this.config.timeout || 0;
+    this.config.timeoutCheckInterval = this.config.timeoutCheckInterval || 100;
+    // Continue indefinitely and don't run digests on each check.
+    var repeatCount = 0;
+    var invokeApply = false;
+    this.timeoutCheckPromise = $interval(function () {
+      self.runTimeoutCheck();
+    }, this.config.timeoutCheckInterval, repeatCount, invokeApply);
   }
 
   /**
@@ -137,8 +133,14 @@ var httpOverWebSocketTransportProvider;
         deferred: self.$q.defer(),
         config: requestConfig,
       };
-      if (self.config.timeout) {
-        self.requests[id].timeoutAfter = Date.now() + self.config.timeout;
+
+      // Manage timeout.
+      var timeout = self.config.timeout;
+      if (typeof requestConfig.timeout === "number") {
+        timeout = requestConfig.timeout;
+      }
+      if (timeout > 0) {
+        self.requests[id].timeoutAfter = Date.now() + timeout;
       }
 
       // Add success and error functions to the promise - this is a straight
@@ -359,6 +361,8 @@ var httpOverWebSocketTransportProvider;
   function PrimusTransport (config, $cacheFactory, $q, $rootScope, $interval) {
     PrimusTransport.super_.apply(this, arguments);
     var self = this;
+    var ID = angular.httpOverWebSocket.ID;
+    var STATUS = angular.httpOverWebSocket.STATUS;
 
     // Either store or create the primus connection.
     if (this.config.instance) {
@@ -367,27 +371,27 @@ var httpOverWebSocketTransportProvider;
       this.primus = primus(this.config.url, this.config.options);
     }
 
-    // Set up to receive messages. These must come back with a matching _id
+    // Set up to receive messages. These must come back with a matching ID
     // property to be considered. Note that because we are probably running
     // with an underlying transport layer that won't segment our messages off
     // into their own space, we are expecting to see all messages that arrive,
     // not just those involved with httpOverWebSocket.
     this.primus.on('data', function (data) {
       // Skip if not an httpOverWebSocket message.
-      if (typeof data !== 'object' || !data._id) {
+      if (typeof data !== 'object' || !data[ID]) {
         return;
       }
 
       // Extract the ID and status, since we don't want to return that with the
       // data.
-      var id = data._id;
-      var status = data._status || 200;
-      delete data._id;
-      delete data._status;
+      var id = data[ID];
+      var status = data[STATUS] || 200;
+      delete data[ID];
+      delete data[STATUS];
 
       if (!self.requests[id]) {
         // Throw and let Angular handle the error.
-        throw new Error('httpOverWebSocketTransport: response has ID ' + data._id + ' but no matching request found.');
+        throw new Error('httpOverWebSocketTransport: response has ID ' + id + ' but no matching request found.');
       }
 
       // Send back something that looks like a $http response.
@@ -400,27 +404,28 @@ var httpOverWebSocketTransportProvider;
    * @see Transport#transmit
    */
   PrimusTransport.prototype.transmit = function (id, requestConfig) {
+    var ID = angular.httpOverWebSocket.ID;
     // Get rid of items we don't want to transmit, but retain the original
     // requestConfig intact.
     requestConfig = angular.copy(requestConfig);
     delete requestConfig.cache;
 
-    // Use the existence of an _id property to determine that this is a message
+    // Use the existence of an ID property to determine that this is a message
     // associated with httpOverWebSocket.
-    requestConfig._id = id;
+    requestConfig[ID] = id;
     this.primus.write(requestConfig);
   };
 
   /* -------------------------------------------------------------------------
-  Provider: httpOverWebSocketTransportProvider
+  Provider: angular.httpOverWebSocket.TransportProvider
   ------------------------------------------------------------------------- */
 
   /**
-   * httpOverWebSocketTransportProvider
+   * angular.httpOverWebSocket.TransportProvider
    *
    * Provides the underlying transport layer.
    */
-  httpOverWebSocketTransportProvider = function httpOverWebSocketTransportProvider() {
+  var httpOverWebSocketTransportProvider = function httpOverWebSocketTransportProvider() {
 
     var config = {
       transport: 'primus',
@@ -453,29 +458,33 @@ var httpOverWebSocketTransportProvider;
     };
 
     /**
-     * Return an httpOverWebSocketTransport service instance.
-     *
-     * @return {Function}
+     * Return a Transport service instance.
      */
-    this.$get = ['$http', '$cacheFactory', '$q', '$rootScope', '$interval', function ($http, $cacheFactory, $q, $rootScope, $interval) {
-      if (config.transport === 'primus') {
-        return new PrimusTransport(config.options, $cacheFactory, $q, $rootScope, $interval);
-      } else {
-        throw new Error('Invalid transport specified for httpOverWebSocketTransportProvider: ' + config.transport);
+    this.$get = [
+      '$cacheFactory',
+      '$q',
+      '$rootScope',
+      '$interval',
+      function ($cacheFactory, $q, $rootScope, $interval) {
+        if (config.transport === 'primus') {
+          return new PrimusTransport(config.options, $cacheFactory, $q, $rootScope, $interval);
+        } else {
+          throw new Error('Invalid transport specified for angular.httpOverWebSocket.TransportProvider: ' + config.transport);
+        }
       }
-    }];
+    ];
   };
 
   /* -------------------------------------------------------------------------
-  Provider: httpOverWebSocketProvider
+  Provider: angular.httpOverWebSocket.Provider
   ------------------------------------------------------------------------- */
 
   /**
-   * httpOverWebSocketProvider
+   * angular.httpOverWebSocket.Provider
    *
    * Provides an interface to match that of ng.$http.
    */
-  httpOverWebSocketProvider = function httpOverWebSocketProvider() {
+  var httpOverWebSocketProvider = function httpOverWebSocketProvider() {
 
     var config = {
       // Are we excluding any URLs, and passing them through to plain $http?
@@ -565,6 +574,22 @@ var httpOverWebSocketTransportProvider;
 
       return httpOverWebSocket;
     }];
+  };
+
+  /* -------------------------------------------------------------------------
+  Expose implementations.
+  ------------------------------------------------------------------------- */
+
+  angular.httpOverWebSocket = {
+    ID: '_howsId',
+    STATUS: '_howsStatus',
+    inherits: inherits,
+    transports: {
+      Transport: Transport,
+      PrimusTransport: PrimusTransport
+    },
+    Provider: httpOverWebSocketProvider,
+    TransportProvider: httpOverWebSocketTransportProvider
   };
 
 }());

@@ -45,24 +45,27 @@ primus.save(path.join(__dirname, '../client/js/lib/primus.js'));
 
 // Set up a listener.
 primus.on('connection', function (spark) {
+  var ID = '_howsId';
+  var STATUS = '_howsStatus';
+
   // Set up responses to httpOverWebSocket requests.
   spark.on('data', function (data) {
     // Check to make sure that this is related to httpOverWebSocket. If not,
     // do nothing.
-    if (typeof data !== 'object' || !data._id) {
+    if (typeof data !== 'object' || !data[ID]) {
       return;
     }
 
     // Generate a response here. The response MUST be an object that at minimum
-    // has an _id property that matches that of the request. It should also
-    // contain a _status property.
+    // has an ID property that matches that of the request. It should also
+    // contain a STATUS property.
     var responseData = {
-      _id: data._id,
-      _status: 200,
       stuff: {
         // ...
       }
     }
+    responseData[ID] = data[ID];
+    responseData[STATUS] = 200;
 
     // Then send the response.
     spark.write(responseData);
@@ -90,8 +93,8 @@ httpOverWebSocket for $http as needed.
 
 ```
 myModule = angular.module(['ngRoute']);
-myModule.provider('httpOverWebSocket', httpOverWebSocketProvider);
-myModule.provider('httpOverWebSocketTransport', httpOverWebSocketTransportProvider);
+myModule.provider('httpOverWebSocket', angular.httpOverWebSocket.Provider);
+myModule.provider('httpOverWebSocketTransport', angular.httpOverWebSocket.TransportProvider);
 
 myModule.config([
   'httpOverWebSocketProvider',
@@ -177,5 +180,8 @@ Current Differences Between $http and httpOverWebSocket Services
 ----------------------------------------------------------------
 
   * Request and response interceptors are not applied.
-  * No headers are added.
+  * Transform request and response functions are not applied.
   * WebSocket requests will always be sent to the connected WebSocket server regardless of URL.
+  * Headers provided in requestConfig.headers are ignored.
+  * The cross-origin requestConfig.withCredentials boolean flag is ignored.
+  * The requestConfig.responseType value is ignored.
