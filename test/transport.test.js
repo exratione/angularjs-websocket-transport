@@ -9,17 +9,15 @@
 */
 /**
  * @fileOverview
- * Tests for the Transport superclass functionality.
+ * Unit tests for the Transport superclass functionality.
  */
 
 describe('Transport', function () {
   'use strict';
 
-  var $httpBackend,
-      $cacheFactory,
+  var $cacheFactory,
       $q,
       $interval,
-      config,
       transport,
       uuidRegExp = /[a-z0-9]{8}-[a-z0-9]{4}-4[a-z0-9]{3}-[a-z0-9]{4}-[a-z0-9]{12}/;
 
@@ -38,7 +36,9 @@ describe('Transport', function () {
       requestConfig: requestConfig || {},
       deferred: {
         resolve: jasmine.createSpy(),
-        reject: jasmine.createSpy()
+        reject: jasmine.createSpy(),
+        // Not needed for any of these tests.
+        promise: {}
       },
       timeoutAfter: timeoutAfter || 0
     };
@@ -46,7 +46,6 @@ describe('Transport', function () {
 
   beforeEach(function () {
     inject(function($injector) {
-      $httpBackend = $injector.get('$httpBackend');
       $cacheFactory = $injector.get('$cacheFactory');
       $q = $injector.get('$q');
       // This will disable the timeout check loop, which we don't want running
@@ -54,8 +53,8 @@ describe('Transport', function () {
       $interval = jasmine.createSpy();
     });
 
-    config = undefined;
-    transport = new angular.httpOverWebSocket.transports.Transport({}, $cacheFactory, $q, $interval);
+    var config = {};
+    transport = new angular.httpOverWebSocket.transports.Transport(config, $cacheFactory, $q, $interval);
   });
 
   it('defaults assigned to configuration', function () {

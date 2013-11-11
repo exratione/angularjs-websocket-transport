@@ -116,6 +116,7 @@
   Transport.prototype.send = function (requestConfig) {
     var self = this;
     var requestId;
+    var promise;
 
     /**
      * Helper function to create the deferred for the new request. We don't
@@ -143,19 +144,18 @@
 
       // Add success and error functions to the promise - this is a straight
       // clone from AngularJS code.
-      var promise = self.requests[id].deferred.promise;
-      promise.success = function(fn) {
-        promise.then(function(response) {
+      self.requests[id].deferred.promise.success = function(fn) {
+        this.then(function(response) {
           fn(response.data, response.status, response.headers, requestConfig);
         });
-        return promise;
+        return this;
       };
 
-      promise.error = function(fn) {
-        promise.then(null, function(response) {
+      self.requests[id].deferred.promise.error = function(fn) {
+        this.then(null, function(response) {
           fn(response.data, response.status, response.headers, requestConfig);
         });
-        return promise;
+        return this;
       };
       return id;
     }
@@ -164,10 +164,10 @@
      * A helper function that adds cache update functionality to a promise on
      * resolution or rejection.
      *
-     * @param {object} promise
+     * @param {object} promiseToUpdate
      */
-    function setPromiseToUpdateCacheOnResolution(promise, cache, url) {
-      promise.then(function (response) {
+    function setPromiseToUpdateCacheOnResolution(promiseToUpdate, cache, url) {
+      promiseToUpdate.then(function (response) {
         cache.put(url, angular.copy(response));
       }, function () {
         // On failure we want to clear the cache for this URL. There will be a
@@ -188,7 +188,6 @@
       }
 
       var response = cache.get(requestConfig.url);
-      var promise;
       // No cached response? Then send the request and cache the promise.
       if (!response) {
         requestId = createDeferred();
@@ -219,8 +218,9 @@
     // and return the promise. Nice and simple.
     } else {
       requestId = createDeferred();
+      promise = this.requests[requestId].deferred.promise;
       this.transmit(requestId, requestConfig);
-      return this.requests[requestId].deferred.promise;
+      return promise;
     }
   };
 
@@ -327,7 +327,6 @@
     // needed.
     var deferred = this.requests[response.id].deferred;
     delete this.requests[response.id];
-
     if (this.isSuccessStatus(response.status)) {
       deferred.resolve(response);
     } else {

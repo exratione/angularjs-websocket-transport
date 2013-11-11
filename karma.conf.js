@@ -1,9 +1,14 @@
+/*jshint
+  node: true
+ */
 /**
  * @fileOverview
  * Karma configuration for unit testing.
  */
 
 module.exports = function(config) {
+  'use strict';
+
   config.set({
     // base path, that will be used to resolve files and exclude
     basePath: '.',
