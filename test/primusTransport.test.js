@@ -156,7 +156,8 @@ describe('PrimusTransport', function () {
     // ------------------------------------------------------------------
 
     // To get the deferred.resolve() involved in the response to trigger in test
-    // code has to be inside an explicit digest loop - i.e. call to $apply().
+    // code, it has to be inside an explicit digest loop - i.e. call to
+    // $apply().
     //
     // This is one of those magic things about AngularJS you just have to know.
     $rootScope.$apply(function () {

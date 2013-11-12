@@ -452,7 +452,8 @@
      * @param {object} configuration
      */
     this.configure = function (providedConfig) {
-      for (var prop in providedConfig || {}) {
+      providedConfig = providedConfig || {};
+      for (var prop in providedConfig) {
         config[prop] = providedConfig[prop];
       }
     };
