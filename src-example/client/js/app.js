@@ -44,7 +44,7 @@
       httpOverWebSocketTransportProvider.configure({
         transport: 'primus',
         options: {
-          // Default rquest timeout in milliseconds. Not the same as the various
+          // Default request timeout in milliseconds. Not the same as the various
           // timeouts associated with Primus: this is how long to wait for a
           // response to a request before rejecting the associated promise.
           timeout: 10000,

@@ -18,9 +18,9 @@ module.exports = function(config) {
     // list of files / patterns to load in the browser
     files: [
       'src-example/client/js/lib/angular.1.2.0.min.js',
-      'test/angular-mocks.1.2.0.js',
+      'test/lib/angular-mocks.1.2.0.js',
       'src/httpOverWebSocket.js',
-      'test/httpOverWebSocketMocks.js',
+      'src/httpOverWebSocketMocks.js',
       'test/**/*.test.js'
     ],
 

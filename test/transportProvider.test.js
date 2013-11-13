@@ -15,8 +15,11 @@
 describe('TransportProvider', function () {
   'use strict';
 
-  var primusInstance,
-      transportProvider;
+  var primusConfig,
+      primusInstance,
+      transportProvider,
+      timeout,
+      timeoutCheckInterval;
 
   beforeEach(function () {
     // Set up a module and load it.
@@ -34,6 +37,18 @@ describe('TransportProvider', function () {
     primusInstance = {
       on: function (type, listener) {}
     };
+
+    // Configuration for launching with a Primus instance.
+    timeout = 10001;
+    timeoutCheckInterval = 101;
+    primusConfig = {
+      transport: 'primus',
+      options: {
+        timeout: timeout,
+        timeoutCheckInterval: timeoutCheckInterval,
+        instance: primusInstance
+      }
+    };
   });
 
   it('configure() with invalid transport should throw', inject(function ($injector) {
@@ -47,16 +62,7 @@ describe('TransportProvider', function () {
   }));
 
   it('configure() with Primus transport specified', inject(function ($injector) {
-    var timeout = 10001;
-    var timeoutCheckInterval = 101;
-    transportProvider.configure({
-      transport: 'primus',
-      options: {
-        timeout: timeout,
-        timeoutCheckInterval: timeoutCheckInterval,
-        instance: primusInstance
-      }
-    });
+    transportProvider.configure(primusConfig);
     var transport = $injector.get('httpOverWebSocketTransport');
 
     expect(transport instanceof angular.httpOverWebSocket.transports.PrimusTransport).toBe(true);

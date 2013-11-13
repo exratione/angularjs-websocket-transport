@@ -566,7 +566,7 @@
       };
 
       httpOverWebSocket.post = function (url, data, requestConfig) {
-        return adjunct('POST', requestConfig, data);
+        return adjunct('POST', url, requestConfig, data);
       };
       httpOverWebSocket.put = function (url, data, requestConfig) {
         return adjunct('PUT', url, requestConfig, data);

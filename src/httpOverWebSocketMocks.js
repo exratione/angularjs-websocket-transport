@@ -97,7 +97,7 @@
       '$interval',
       '$httpBackend',
       function ($cacheFactory, $q, $interval, $httpBackend) {
-        return new MockTransport(config, $cacheFactory, $q, $interval, $httpBackend);
+        return new MockTransport(config.options, $cacheFactory, $q, $interval, $httpBackend);
       }
     ];
   };
