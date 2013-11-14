@@ -174,7 +174,79 @@ be accessed at:
 
     https://192.168.35.10/
 
-[0]: https://github.com/primus/primus
+How to Set Up AngularJS Unit Tests
+----------------------------------
+
+To unit test an AngularJS application that uses this WebSocket transport you
+can take much the same approach as for unit testing code that makes use of the
+$http service. Include `/src/httpOverWebSocketMocks.js` from the project and use
+the MockTransport service to send requests via the usual mock $httpBackend.
+
+Here is an example:
+
+```
+describe('Provider', function () {
+  'use strict';
+
+  var $httpBackend,
+      httpOverWebSocket;
+
+  beforeEach(function () {
+    // Set up a module and load it.
+    var test = angular.module('test', []);
+    test.provider('httpOverWebSocket', angular.httpOverWebSocket.Provider);
+    // Use the mock transport layer that redirects all requests to $httpBackend.
+    test.provider('httpOverWebSocketTransport', angular.httpOverWebSocket.MockTransportProvider);
+    test.config([
+      'httpOverWebSocketProvider',
+      'httpOverWebSocketTransportProvider',
+      function (httpOverWebSocketProvider, httpOverWebSocketTransportProvider) {
+        // This is a dummy function; it does nothing.
+        httpOverWebSocketTransportProvider.configure({});
+        // All requests wind up passing through $httpBackend regardless of these
+        // settings, either via $http (if excluded or not included) or via the
+        // MockTransport service (if included and not excluded).
+        httpOverWebSocketProvider.configure({
+          exclude: [],
+          include: [/^\/overWebSocket/]
+        });
+      }
+    ]);
+    module('test');
+
+    inject(function($injector) {
+      $httpBackend = $injector.get('$httpBackend');
+      httpOverWebSocket = $injector.get('httpOverWebSocket');
+    });
+  });
+
+  afterEach(function() {
+    $httpBackend.verifyNoOutstandingExpectation();
+    $httpBackend.verifyNoOutstandingRequest();
+  });
+
+  it('GET request', function () {
+    var url = '/overWebSocket';
+    $httpBackend.expectGET(url);
+    $httpBackend.whenGET(url).respond(200, {
+      stuff: 'nonsense'
+    };);
+
+    var resolved = jasmine.createSpy();
+    var rejected = jasmine.createSpy();
+    httpOverWebSocket({
+      method: method,
+      url: url
+    }).then(resolved, rejected);
+
+    $httpBackend.flush();
+
+    expect(rejected).not.toHaveBeenCalled();
+    expect(resolved).toHaveBeenCalled();
+    expect(resolved.mostRecentCall.args[0].data).toEqual(response);
+  });
+});
+```
 
 Current Differences Between $http and httpOverWebSocket Services
 ----------------------------------------------------------------
@@ -185,3 +257,5 @@ Current Differences Between $http and httpOverWebSocket Services
   * Headers provided in requestConfig.headers are ignored.
   * The cross-origin requestConfig.withCredentials boolean flag is ignored.
   * The requestConfig.responseType value is ignored.
+
+[0]: https://github.com/primus/primus
