@@ -92,7 +92,7 @@ In the AngularJS client application code perform the substitution of
 httpOverWebSocket for $http as needed.
 
 ```
-myModule = angular.module(['ngRoute']);
+myModule = angular.module('myModule', ['ngRoute']);
 myModule.provider('httpOverWebSocket', angular.httpOverWebSocket.Provider);
 myModule.provider('httpOverWebSocketTransport', angular.httpOverWebSocket.TransportProvider);
 
@@ -185,7 +185,7 @@ the MockTransport service to send requests via the usual mock $httpBackend.
 Here is an example:
 
 ```
-describe('Provider', function () {
+describe('An Example', function () {
   'use strict';
 
   var $httpBackend,
@@ -230,7 +230,7 @@ describe('Provider', function () {
     $httpBackend.expectGET(url);
     $httpBackend.whenGET(url).respond(200, {
       stuff: 'nonsense'
-    };);
+    });
 
     var resolved = jasmine.createSpy();
     var rejected = jasmine.createSpy();
