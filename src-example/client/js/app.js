@@ -103,11 +103,21 @@
      */
     function processResponse(index, success, response) {
       var result = $scope.results[index];
+      $scope.firstResult = $scope.firstResult || result;
+
       result.endTime = Date.now();
       result.completed = true;
       result.success = success;
       result.elapsed = result.endTime - result.startTime;
       result.responseData = JSON.stringify(response.data);
+
+      if (index === 0) {
+        result.cached = false;
+      } else if (result.responseData === $scope.firstResult.responseData) {
+        result.cached = true;
+      } else {
+        result.cached = false;
+      }
 
       // Complete the run if we're done.
       if (!$scope.isRunning()) {
@@ -214,6 +224,7 @@
       };
       this.results = [];
       this.socketCallbacks = [];
+      delete this.firstResult;
     };
 
     /**
@@ -303,10 +314,25 @@
     $scope.clear();
     // The normal limit on concurrent HTTP requests in Firefox.
     $scope.count = 6;
-    $scope.useCache = false;
     $scope.countOptions = [1, 6, 10, 20];
+
+    $scope.useCache = false;
+    $scope.useCacheOptions = [
+      {
+        label: 'without',
+        value: false
+      },
+      {
+        label: 'with',
+        value: true
+      }
+    ];
+
     $scope.httpUrl = '/rest';
     $scope.httpOverWebSocketUrl = '/restOverWebSocket';
+    $scope.title = 'Compare AngularJS ng.$http Versus httpOverWebSocket';
+    // Puts the title in the document head also.
+    $scope.$root.title = $scope.title;
   }
 
   // Create the application controller. Only a single controller here to go

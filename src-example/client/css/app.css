@@ -1,35 +1,27 @@
-body {
-  padding: 0 10px;
+.page-header {
+  margin-top: 20px;
 }
-.wrapper {
-  padding: 10px 0;
+.row-padded {
+  padding: 5px 0;
 }
-.wrapper button {
-  padding: 5px;
+.row-spacer {
+  height: 20px;
 }
-.wrapper select {
-  margin-right: 30px;
+ul {
+  margin-bottom: 0;
 }
-table {
-  border-left: 1px solid #ccc;
-  border-top: 1px solid #ccc;
-  padding: 10px;
+.btn {
+  min-width: 154px;
 }
-td, th {
-  text-align: left;
-  border-bottom: 1px solid #ccc;
-  border-right: 1px solid #ccc;
-  padding: 10px;
+.alert {
+  margin-bottom: 0;
 }
 th {
-  font-weight: bold;
+  background-color: #DDEEFF;
 }
 .number {
   width: 100px;
 }
 .elapsed, .status {
   width: 250px;
-}
-.no-results {
-  text-align: center;
 }

@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.0.4
+-----
+
+  * Add Bootstrap and prettify the demonstration a little.
+
 0.0.3
 -----
 

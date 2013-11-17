@@ -1,52 +1,103 @@
-<h4>Comparing AngularJS ng.$http Versus httpOverWebSocket</h4>
 
-<p>
-Use the buttons below to run the same REST-like requests over HTTP/S or
-WebSocket connections. Results are displayed in the table as they arrive.
-Note that some browsers will cache HTTP/S requests issued in parallel.
-</p>
-
-<div class="wrapper">
-  <button data-ng-click="httpParallel()">HTTP Parallel</button>
-  <button data-ng-click="httpSeries()">HTTP Series</button>
-  <button data-ng-click="httpOverWebSocketParallel()">WebSocket Parallel</button>
-  <button data-ng-click="httpOverWebSocketSeries()">WebSocket Series</button>
+<div class="row center page-header">
+  <h4 class="text-center">{{title}}</h4>
 </div>
 
-<div class="wrapper">
-  Requests:
-  <select
-    data-ng-model="count"
-    data-ng-options="value for value in countOptions"
-  ></select>
-
-  Use AngularJS cache:
-  <input
-    type="checkbox"
-    data-ng-model="useCache"
-  />
+<div class="row row-padded">
+  <p>
+    The buttons below run sets of trivial REST-like requests using the
+    <a target="_blank" href="http://docs.angularjs.org/api/ng.$http">ng.$https</a>
+    service (via HTTP) or the
+    <a target="_blank" href="https://github.com/exratione/angularjs-websocket-transport">httpOverWebSocket</a>
+    service (via WebSocket). The requests run either in parallel or in series.
+  </p>
+  <ul>
+    <li>
+      Response times are displayed in the table as the responses arrive.
+    </li>
+    <li>
+      Chromium caches concurrent HTTP GET requests made to the same URL.
+    </li>
+    <li>
+      The Express server uses Keep Alive, and delays each response by 50ms.
+    </li>
+  </ul>
 </div>
 
-<div class="wrapper" data-ng-show="run.ended">
-  <b>Time to complete test: {{run.elapsed}}ms</b>
+<div class="row row-spacer"></div>
+
+<div class="row row-padded">
+  <div class="col-md-3">
+    <button type="button" class="btn btn-primary" data-ng-click="httpParallel()">HTTP Parallel</button>
+  </div>
+  <div class="col-md-3">
+    <button type="button" class="btn btn-primary" data-ng-click="httpSeries()">HTTP Series</button>
+  </div>
+  <div class="col-md-3">
+    <button type="button" class="btn btn-primary" data-ng-click="httpOverWebSocketParallel()">WebSocket Parallel</button>
+  </div>
+  <div class="col-md-3">
+    <button type="button" class="btn btn-primary" data-ng-click="httpOverWebSocketSeries()">WebSocket Series</button>
+  </div>
 </div>
 
-<table>
-  <tr>
-    <th class="number">#</th>
-    <th class="status">Status</th>
-    <th class="elapsed">Request Duration (ms)</th>
-    <th class="elapsed">Response</th>
-  </tr>
-  <tr data-ng-hide="results.length">
-    <td class="no-results" colspan="4">
-      No test results.
-    </td>
-  </tr>
-  <tr data-ng-repeat="result in results">
-    <td>{{result.index}}</td>
-    <td>{{resultStatus($index)}}</td>
-    <td>{{result.elapsed}}</td>
-    <td>{{result.responseData}}</td>
-  </tr>
-</table>
+<div class="row row-padded text-center">
+  <form class="form-inline">
+    <div class="form-group">
+    Issue
+    </div>
+    <div class="form-group">
+      <select
+        class="form-control"
+        data-ng-model="count"
+        data-ng-options="value for value in countOptions"
+      ></select>
+    </div>
+    <div class="form-group">
+      requests
+    </div>
+    <div class="form-group">
+      <select
+        class="form-control"
+        data-ng-model="useCache"
+        data-ng-options="item.value as item.label for item in useCacheOptions"
+      ></select>
+    </div>
+    <div class="form-group">
+      a client cache enabled.
+    </div>
+  </form>
+</div>
+
+<div class="row row-padded" data-ng-show="run.ended">
+  <div class="alert alert-success">
+    Test completed in {{run.elapsed}}ms.
+  </div>
+</div>
+
+<div class="row row-spacer"></div>
+
+<div class="row row-padded">
+  <table class="table table-bordered">
+    <tr>
+      <th class="number">#</th>
+      <th class="status">Status</th>
+      <th class="elapsed">Request Duration (ms)</th>
+      <th class="elapsed">Cached Response?</th>
+    </tr>
+    <tr class="warning" data-ng-hide="results.length">
+      <td class="text-center" colspan="4">
+        No test results.
+      </td>
+    </tr>
+    <tr data-ng-repeat="result in results">
+      <td>{{result.index}}</td>
+      <td>{{resultStatus($index)}}</td>
+      <td>{{result.elapsed}}</td>
+      <td>
+        <span data-ng-show="result.cached">Yes</span>
+        <span data-ng-hide="result.cached">No</span>
+      </td>
+    </tr>
+  </table>
+</div>
